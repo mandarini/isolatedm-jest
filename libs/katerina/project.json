@@ -1,0 +1,26 @@
+{
+  "projectType": "library",
+  "root": "libs/katerina",
+  "sourceRoot": "libs/katerina/src",
+  "prefix": "isolatedm",
+  "targets": {
+    "test": {
+      "executor": "@nrwl/jest:jest",
+      "outputs": ["coverage/libs/katerina"],
+      "options": {
+        "jestConfig": "libs/katerina/jest.config.js",
+        "passWithNoTests": true
+      }
+    },
+    "lint": {
+      "executor": "@nrwl/linter:eslint",
+      "options": {
+        "lintFilePatterns": [
+          "libs/katerina/src/**/*.ts",
+          "libs/katerina/src/**/*.html"
+        ]
+      }
+    }
+  },
+  "tags": []
+}
