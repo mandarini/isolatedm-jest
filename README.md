@@ -1,105 +1,187 @@
-
-
-# Isolatedm
+# Branch coverage bug for `isolatedModules: true`
 
 This project was generated using [Nx](https://nx.dev).
 
-<p style="text-align: center;"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="450"></p>
+Run `npx nx test katerina` from root
 
-🔎 **Smart, Fast and Extensible Build System**
+It's using code from [Nx](https://github.com/nrwl/nx), and also code found in these comments by [micalevisk](https://github.com/micalevisk) and [vad3x](https://github.com/vad3x):
 
-## Quick Start & Documentation
+- https://github.com/istanbuljs/istanbuljs/issues/70#issuecomment-1116051398
+- https://github.com/istanbuljs/istanbuljs/issues/70#issuecomment-975654329
+- https://github.com/kulshekhar/ts-jest/issues/1166#issuecomment-975650682
 
-[Nx Documentation](https://nx.dev/angular)
+Lots of credit also to:
 
-[10-minute video showing all Nx features](https://nx.dev/getting-started/intro)
+- [barbados-clemens](https://github.com/barbados-clemens)
+- [cammisuli](https://github.com/cammisuli)
+- [jaysoo](https://github.com/jaysoo)
 
-[Interactive Tutorial](https://nx.dev/tutorial/01-create-application)
+## Try it out locally
 
-## Adding capabilities to your workspace
+1. Clone this repo
+2. `yarn` to install dependencies
+3. `npx nx test katerina --coverage`
 
-Nx supports many plugins which add capabilities for developing different types of applications and different tools.
+## Constructor parameters counting as branches
 
-These capabilities include generating applications, libraries, etc as well as the devtools to test, and build projects as well.
+When using `isolatedModules: true` there's a bug in `istanbul` and/or `ts-jest` that considers the decorated parameters as branches. The bug is described in these issues: https://github.com/kulshekhar/ts-jest/issues/1166, https://github.com/istanbuljs/istanbuljs/issues/70.
 
-Below are our core plugins:
+This is due to the way istanbul/ts-jest build/create the output for the code to be tested. Let's take a look at what the actual [component code](libs/katerina/src/lib/ktrn/ktrn.component.ts) looks like, and then what the ts-jest/istanbul generated code looks like:
 
-- [Angular](https://angular.io)
-  - `ng add @nrwl/angular`
-- [React](https://reactjs.org)
-  - `ng add @nrwl/react`
-- Web (no framework frontends)
-  - `ng add @nrwl/web`
-- [Nest](https://nestjs.com)
-  - `ng add @nrwl/nest`
-- [Express](https://expressjs.com)
-  - `ng add @nrwl/express`
-- [Node](https://nodejs.org)
-  - `ng add @nrwl/node`
+### Part of the component code
 
-There are also many [community plugins](https://nx.dev/community) you could add.
+```
+@Component({
+  selector: 'isolatedm-ktrn',
+  templateUrl: './ktrn.component.html',
+  styleUrls: ['./ktrn.component.css'],
+})
+export class KtrnComponent {
+  constructor(
+    private router: Router,
+    private activatedRoute: ActivatedRoute,
+    private routeSnap: ActivatedRouteSnapshot
+  ) {}
+}
 
-## Generate an application
+```
 
-Run `ng g @nrwl/angular:app my-app` to generate an application.
+### Part of the generated/tested code
 
-> You can use any of the plugins above to generate applications as well.
+```
+/* istanbul ignore next */
+cov_2hjx6r85nd().s[11]++;
+KtrnComponent = (0, tslib_1.__decorate)([(0, core_1.Component)({
+  selector: 'isolatedm-ktrn',
+  template: require("./ktrn.component.html")
+}), (0, tslib_1.__metadata)("design:paramtypes", [typeof (_a =
+/* istanbul ignore next */
+(cov_2hjx6r85nd().b[1][0]++, typeof router_1.Router !== "undefined") &&
+/* istanbul ignore next */
+(cov_2hjx6r85nd().b[1][1]++, router_1.Router)) === "function" ?
+/* istanbul ignore next */
+(cov_2hjx6r85nd().b[0][0]++, _a) :
+/* istanbul ignore next */
+(cov_2hjx6r85nd().b[0][1]++, Object), typeof (_b =
+/* istanbul ignore next */
+(cov_2hjx6r85nd().b[3][0]++, typeof router_1.ActivatedRoute !== "undefined") &&
+/* istanbul ignore next */
+(cov_2hjx6r85nd().b[3][1]++, router_1.ActivatedRoute)) === "function" ?
+/* istanbul ignore next */
+(cov_2hjx6r85nd().b[2][0]++, _b) :
+/* istanbul ignore next */
+(cov_2hjx6r85nd().b[2][1]++, Object), typeof (_c =
+/* istanbul ignore next */
+(cov_2hjx6r85nd().b[5][0]++, typeof router_1.ActivatedRouteSnapshot !== "undefined") &&
+/* istanbul ignore next */
+(cov_2hjx6r85nd().b[5][1]++, router_1.ActivatedRouteSnapshot)) === "function" ?
+/* istanbul ignore next */
+(cov_2hjx6r85nd().b[4][0]++, _c) :
+/* istanbul ignore next */
+(cov_2hjx6r85nd().b[4][1]++, Object)])], KtrnComponent);
 
-When using Nx, you can create multiple applications and libraries in the same workspace.
+```
 
-## Generate a library
+## Reproduce the bug locally:
 
-Run `ng g @nrwl/angular:lib my-lib` to generate a library.
+First of all, you want to remove the "fix", first, to see how it looks before the "fix.
 
-> You can also use any of the plugins above to generate libraries as well.
+Go to `jest.preset.js` and remove the `transform`:
 
-Libraries are shareable across libraries and applications. They can be imported from `@isolatedm/mylib`.
+```
+- transform: {
+-    '^.+\\.(ts|mjs|js|html)$': path.join(
+-      __dirname,
+-      'fix-istanbul-decorators.js'
+-    ),
+-  },
+```
 
-## Development server
+Then try it out:
 
-Run `ng serve my-app` for a dev server. Navigate to http://localhost:4200/. The app will automatically reload if you change any of the source files.
+1. `npx jest --clear-cache`
+2. `npx nx test katerina --skipNxCache --coverage`
+3. Now you can see the generated code in your `jest` cache directory. To find this directory you can do
+   `npx jest --show-config`, look for `cacheDirectory`, then open this directory in your code editor/IDE, and then do a search for `KtrnComponent`.
+4. Then open the coverage result and see the result (`coverage/libs/katerina/index.html`).
 
-## Code scaffolding
+![Coverage before the fix](coverage_before.png)
 
-Run `ng g component my-component --project=my-app` to generate a new component.
+## Applying the fix with the script
 
-## Build
+### What the script does
 
-Run `ng build my-app` to build the project. The build artifacts will be stored in the `dist/` directory. Use the `--prod` flag for a production build.
+The [script](fix-istanbul-decorators.js) essentially does two things:
 
-## Running unit tests
+1. It dynamically adds `/* istanbul ignore next */` before every constructor found inside a `.component.ts` file
+2. It adds `/* istanbul ignore next */` before every single constructor parameter in the **generated** code.
+3. It adds `/* istanbul ignore next */` before decorators on methods and properties (ref: https://github.com/istanbuljs/istanbuljs/issues/70#issuecomment-1116051398, https://github.com/istanbuljs/istanbuljs/issues/70#issuecomment-975654329, https://github.com/kulshekhar/ts-jest/issues/1166#issuecomment-975650682)
+4. When constructor parameters have decorated properties (eg @inject), TS adds a typeof branch check, which we don't want to instrument (ref: https://github.com/istanbuljs/istanbuljs/issues/70#issuecomment-1116051398, https://github.com/istanbuljs/istanbuljs/issues/70#issuecomment-975654329, https://github.com/kulshekhar/ts-jest/issues/1166#issuecomment-975650682)
 
-Run `ng test my-app` to execute the unit tests via [Jest](https://jestjs.io).
+[Here is the documentation](https://github.com/gotwarlost/istanbul/blob/master/ignoring-code-for-coverage.md) for ignoring things in istanbul. In our case, with the `isolatedModule: true`, the generated code results in a number of ternary expressions for each parameter. For that reason, we need to make sure we add the `ignore next` before each one of these ternary expressions, and not **just** ingore the `decorators` and the metadata/paramtypes.
 
-Run `nx affected:test` to execute the unit tests affected by a change.
+In our script, we are using the TypeScript AST to parse the file, and identify these `ConditionalExpression`s, which are within our constructor of course.
 
-## Running end-to-end tests
+### The results
 
-Run `ng e2e my-app` to execute the end-to-end tests via [Cypress](https://www.cypress.io).
+The resulting generated code, after the replacements are in place, looks, now, like this:
 
-Run `nx affected:e2e` to execute the end-to-end tests affected by a change.
+```
+/* istanbul ignore next */
+cov_2hjx6r85nd().s[8]++;
+KtrnComponent = (0, tslib_1.
+/* istanbul ignore next */
+__decorate)([(0, core_1.Component)({
+  selector: 'isolatedm-ktrn',
+  template: require("./ktrn.component.html")
+}), (0, tslib_1.
+/* istanbul ignore next */
+__metadata)("design:paramtypes",
+/* istanbul ignore next */
+[
+/* istanbul ignore next */
+typeof (_a = typeof router_1.Router !== "undefined" && router_1.Router) === "function" ? _a : Object,
+/* istanbul ignore next */
+typeof (_b = typeof router_1.ActivatedRoute !== "undefined" && router_1.ActivatedRoute) === "function" ? _b : Object,
+/* istanbul ignore next */
+typeof (_c = typeof router_1.ActivatedRouteSnapshot !== "undefined" && router_1.ActivatedRouteSnapshot) === "function" ? _c : Object])], KtrnComponent);
+```
 
-## Understand your workspace
+Compare this with the result above, before ignoring the ternary experssions.
 
-Run `nx graph` to see a diagram of the dependencies of your projects.
+Now our coverage is fixed:
 
-## Further help
+![Coverage after the fix](coverage_after.png)
 
-Visit the [Nx Documentation](https://nx.dev/angular) to learn more.
+## Reproduce the fix locally:
 
+First of all, you want to add the `transform` back.
 
+Go to `jest.preset.js` and re-add the `transform`:
 
+```
++ transform: {
++    '^.+\\.(ts|mjs|js|html)$': path.join(
++      __dirname,
++      'fix-istanbul-decorators.js'
++    ),
++  },
+```
 
+Then try it out:
 
+1. `npx jest --clear-cache`
+2. `npx nx test katerina --skipNxCache --coverage`
+3. Now you can see the generated code in your `jest` cache directory. To find this directory you can do
+   `npx jest --show-config`, look for `cacheDirectory`, then open this directory in your code editor/IDE, and then do a search for `KtrnComponent`.
+4. Then open the coverage result and see the result (`coverage/libs/katerina/index.html`).
 
-## ☁ Nx Cloud
+## Where is `jest-preset-angular`?
 
-### Distributed Computation Caching & Distributed Task Execution
+You may have noticed that [I removed](https://github.com/mandarini/isolatedm-jest/commit/e4a46cc8b26555e48a522815114d1cfc83e1923a) the project-level `transform` from `apps/web/jest.config.js` and `libs/katerina/jest.config.js`. That transform is needed because we need to apply `'jest-preset-angular'` to all the files. However, in this case, when using the script, we are actually using `'jest-preset-angular'` inside the [root-level transform script](fix-istanbul-decorators.js#L14):
 
-<p style="text-align: center;"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-cloud-card.png"></p>
+```
+const { default: tsJest } = require('jest-preset-angular');
+```
 
-Nx Cloud pairs with Nx in order to enable you to build and test code more rapidly, by up to 10 times. Even teams that are new to Nx can connect to Nx Cloud and start saving time instantly.
-
-Teams using Nx gain the advantage of building full-stack applications with their preferred framework alongside Nx’s advanced code generation and project dependency graph, plus a unified experience for both frontend and backend developers.
-
-Visit [Nx Cloud](https://nx.app/) to learn more.
+That way, the `transformer` on line 20 is already the `'jest-preset-angular'` transformer.
