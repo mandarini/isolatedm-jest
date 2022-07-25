@@ -9,9 +9,6 @@ module.exports = {
     },
   },
   coverageDirectory: '../../coverage/libs/katerina',
-  transform: {
-    '^.+\\.(ts|mjs|js|html)$': 'jest-preset-angular',
-  },
   transformIgnorePatterns: ['node_modules/(?!.*\\.mjs$)'],
   snapshotSerializers: [
     'jest-preset-angular/build/serializers/no-ng-attributes',
